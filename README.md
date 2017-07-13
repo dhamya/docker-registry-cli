@@ -27,7 +27,7 @@ Usage: ./docker-registry-cli [-s server] [-u username] [-p password] [-v verbose
   -d   --delete            deletes ALL images, provide exclusions via -e flag
   -e   --exclude           list of repos to exclude comma-separated list, name:tag format
 
-example: ./docker-registry-cli -s 129.157.181.199:5000 -u admin -p p@ssword -v true -d true -e foo:bar,foo1:bar1
+example: ./docker-registry-cli -s 139.156.121.159:5000 -u admin -p p@ssword -v true -d true -e foo:bar,foo1:bar1
 
 ```
 
@@ -49,7 +49,7 @@ I highly encourage use of [SemVer](http://semver.org/) for versioning. For the v
 
 ## License
 
-This project is licensed under the MIT License - the of which roughly goes as ...
+This project is licensed under the MIT License - the text of which roughly goes as ...
 
 ```
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
