@@ -1,0 +1,171 @@
+#!/usr/bin/python
+
+import ssl, getopt,sys,json,urllib2, base64, string
+
+_SERVER = ""
+_AUTH_TOKEN= ""
+_CATALOG = "_catalog"
+_MANIFEST = "/manifests/"
+_TAGS = "/tags/list"
+_DOKCER_CONT_HDR="docker-content-digest"
+_FSLAYERS="fsLayers"
+_BLOBSUM="blobSum"
+
+def usage():
+    print ''
+    print 'Usage: '+sys.argv[0]+' [-s server] [-u username] [-p password] [-v verbose] [-d delete] [-e EXCLUDE]'
+    print '  -s   --server            Docker registry URL'
+    print '  -u   --username          docker registry user-name'
+    print '  -p   --password          docker registry user\'s password'
+    print '  -v   --verbose           verbose output'
+    print '  -d   --delete            deletes ALL images, provide exclusions via -e flag'    
+    print '  -e   --exclude           list of repos to exclude comma-separated list, name:tag format'
+    print ''
+    print 'example: '+sys.argv[0]+' -s 129.157.181.199:5000 -u admin -p p@ssword -v true -d true -e foo:bar,foo1:bar1'
+
+def parseExcludeList(arg):
+ try:
+  items = arg.split(',')
+  excludeList=items
+  for item in items:
+   elements = item.split(':')
+   if (len(elements) != 2):
+    raise Exception("Invalid format")
+    sys.exit(2)
+   
+   for element in elements:
+    if(len(element) < 1):
+     raise Exception("Invalid value format")
+     sys.exit(2)
+     
+ except ValueError:
+  print arg + " invalid format"
+  
+ return items
+
+def makeRequest(url,method):
+ try:
+  request = urllib2.Request(url)
+  if(method=="DELETE"):
+   request.get_method = lambda: 'DELETE'
+   
+  request.add_header("Authorization", "Basic %s" % _AUTH_TOKEN)
+  result = urllib2.urlopen(request)
+  return result
+ except urllib2.HTTPError, e:
+  if(e.code == 401):
+   print "Error making HTTP request - incorrect username/password provided. Error code:" + str(e.code)
+  if(e.code == 502):
+   print "Error making HTTP request - server " + _SERVER + " not reachable. Error code:" + str(e.code)
+  else:
+   print "Error making the HTTP request,HTTP error = " + str(e.code)
+ except urllib2.HTTPError, e:
+  print "Error making the HTTP request,URL error = " + str(e.code)
+ except:
+  print "Unknown error occurred during execution"
+
+  
+def main():
+    _url = ""
+    excludeList=list()
+    delete = False
+    verbose=False
+    username = ""
+    password = ""
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], 's:u:p:v:d:e:h', [' server', 'username','password','verbose','exclude','help'])
+        if not opts:
+            usage()
+            sys.exit(2)
+    except getopt.GetoptError as err:
+        print str(err)
+        usage()
+        sys.exit(2)
+        
+    for opt, arg in opts:
+        if opt in ('-h', '--help'):
+            usage()
+            sys.exit(2)
+        elif opt in ('-s', '--server'):
+            global _SERVER
+            _SERVER = "https://"+arg+"/v2/"
+        elif opt in ('-u', '--username'):
+            username = arg
+        elif opt in ('-p', '--password'):
+            password = arg
+        elif opt in ('-d', '--delete'):
+            delete = True
+        elif opt in ('-v', '--verbose'):
+            verbose = True
+
+        elif opt in ('-e', '--exclude'):
+            excludeList = arg
+        else:
+            usage()
+            sys.exit(2)
+            
+    if(len(excludeList) > 0):
+     try:
+      excludeList= parseExcludeList(excludeList)
+     except:
+      print "Exception in parsing the exclude " + excludeList+ " list - aborting"
+      sys.exit(2)
+     
+    global _AUTH_TOKEN
+    _AUTH_TOKEN = base64.b64encode('%s:%s' % (username, password))
+        
+    _url = _SERVER + _CATALOG
+    result = makeRequest(_url,"GET")
+    data = result.read()
+    repos = json.loads(data)
+
+    print "\n\nUsing docker registry at: " + _SERVER + " connecting with user:" + username
+    if(delete):
+      print "Running in DELETE mode"
+    else:
+      print "Running in discover/print mode"
+    print "============================================"
+    for repo in repos["repositories"]:
+     print "    Processing repo name: " + repo
+     _url = _SERVER + repo + _TAGS       
+     result = makeRequest(_url,"GET")
+     data = result.read()
+     tags = json.loads(data)
+     try:
+      for tag in tags["tags"]:
+        _url = _SERVER + repo + _MANIFEST + tag
+        result = makeRequest(_url,"GET")
+        data = result.read()
+        sha1 = result.info().getheader(_DOKCER_CONT_HDR)
+        print "          image: " + repo + ":" + tag
+        
+        if(verbose):
+          print "       checksum: " + sha1
+          fslayers = json.loads(data)
+          for fslayer in fslayers[_FSLAYERS]:
+            blob = fslayer[_BLOBSUM] 
+            print "         FSlayer:" + blob          
+          
+        _lookupStr = repo +":" + tag
+        if(delete):
+         try:
+           excludeList.index(_lookupStr)
+           print "      *** EXCLUSION: found" + _lookupStr + " in exclude list - this image will NOT be deleted "
+         except ValueError:
+             print "       Proceeding to delete item - " + repo + ":" + tag
+             _url = _SERVER + repo + _MANIFEST + sha1
+             makeRequest(_url,"DELETE")                 
+      print "============================================"
+      if(delete):
+        print "\n\n*********************************************"
+        print "The images were deleted from registry, that does NOT mean the disk will be freed up."
+        print "You will need to run garbage collection on the registry."
+        print "Refer documentation at https://docs.docker.com/registry/garbage-collection/ for more details"
+        print "*********************************************\n\n"
+            
+     except TypeError, e:
+       print "**** No tag found for this image/repo"
+  
+if __name__ == "__main__":
+ main()
