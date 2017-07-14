@@ -1,6 +1,6 @@
 # docker-registry-cli
 
-This is very-basic python built script that interacts with private docker registries that are setup us to use basic auth. The tool can list all repos, images, tag & optionall all FS layers that make an image. A image can be deleted& an exclude list can be provided to exlude certain images from deletion.
+This is very-basic python built script that interacts with private docker registries that are setup to use basic auth. The tool can list all images, tags & optionally all FS layers that make an image. A image can be deleted & an exclude list allows to exlude certain images from deletion.
 
 ## Getting Started
 
@@ -62,5 +62,5 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## Acknowledgments
 
-* [Drupad Panchal](https://www.linkedin.com/in/sachindhamdhere/)  inspired parts of this script 
+* [Drupad Panchal](https://www.linkedin.com/in/drupadp/)  inspired parts of this script 
 
